@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Golubchik</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+body {margin:0;font-family:sans-serif;}
+.app{display:flex;height:100vh;}
+.menu{width:240px;background:#17212b;color:white;padding:10px;}
+.chat{flex:1;display:flex;flex-direction:column;}
+.messages{flex:1;overflow:auto;padding:10px;}
+input{width:100%;padding:8px;}
+button{padding:8px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="menu">
+    <h3>Golubchik</h3>
+    <input id="room" placeholder="Комната" value="public">
+    <button onclick="join()">Войти</button>
+  </div>
+  <div class="chat">
+    <div class="messages" id="msgs"></div>
+    <input id="msg" placeholder="Сообщение" onkeydown="if(event.key==='Enter')send()">
+  </div>
+</div>
+
+<script>
+const socket = io();
+let currentRoom = "public";
+
+function join(){
+  currentRoom = room.value;
+  socket.emit("join", currentRoom);
+  msgs.innerHTML = "";
+}
+
+function send(){
+  if(!msg.value) return;
+  socket.emit("message", {room:currentRoom, text:msg.value});
+  msg.value="";
+}
+
+socket.on("message", d=>{
+  const div=document.createElement("div");
+  div.textContent=d.text;
+  msgs.appendChild(div);
+});
+</script>
+</body>
+</html>
