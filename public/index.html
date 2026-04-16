@@ -2,54 +2,28 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Golubchik PRO</title>
+<title>Golubchik DM</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
-:root{
-  --bg:#eaf3ff;
-  --panel:#ffffff;
-  --text:#111;
-  --accent:#2ea6ff;
-  --msg:#dff1ff;
-}
+body{margin:0;font-family:Arial;background:#0b1020;color:white;}
+.app{display:flex;height:100vh;}
 
-.dark{
-  --bg:#0b1020;
-  --panel:#111a2e;
-  --text:#fff;
-  --accent:#5865f2;
-  --msg:#1b2a4a;
-}
-
-body{
-margin:0;
-font-family:Arial;
-background:var(--bg);
-color:var(--text);
-}
-
-.app{
-display:flex;
-height:100vh;
-}
-
-/* LEFT */
 .left{
 width:260px;
-background:var(--panel);
+background:#111a2e;
 padding:10px;
-display:flex;
-flex-direction:column;
 }
 
-.userlist{
-font-size:14px;
-opacity:0.8;
+.user{
+padding:8px;
+margin:4px 0;
+background:#1b2a4a;
+border-radius:6px;
+cursor:pointer;
 }
 
-/* CHAT */
 .chat{
 flex:1;
 display:flex;
@@ -58,45 +32,20 @@ flex-direction:column;
 
 .top{
 padding:10px;
-background:var(--panel);
-font-weight:bold;
-display:flex;
-justify-content:space-between;
+background:#111a2e;
 }
 
 .messages{
 flex:1;
-overflow:auto;
 padding:10px;
-display:flex;
-flex-direction:column;
-gap:8px;
+overflow:auto;
 }
 
 .msg{
-max-width:60%;
+background:#1b2a4a;
 padding:8px;
-border-radius:10px;
-background:var(--msg);
-}
-
-.me{
-align-self:flex-end;
-background:var(--accent);
-color:white;
-}
-
-input,button{
-padding:8px;
-margin:4px 0;
-border:none;
-border-radius:6px;
-}
-
-button{
-background:var(--accent);
-color:white;
-cursor:pointer;
+border-radius:8px;
+margin:5px 0;
 }
 </style>
 </head>
@@ -105,33 +54,19 @@ cursor:pointer;
 
 <div class="app">
 
-<!-- LEFT -->
 <div class="left">
-<h2>🕊 Golubchik PRO</h2>
-
-<input id="name" placeholder="Ник">
-<input id="room" value="public">
-
-<button onclick="join()">Войти</button>
-<button onclick="toggleTheme()">Тема</button>
-
-<hr>
-
-<h4>🟢 Онлайн</h4>
-<div id="users" class="userlist"></div>
+<h3>🕊 Users</h3>
+<div id="users"></div>
 </div>
 
-<!-- CHAT -->
 <div class="chat">
 
-<div class="top">
-<span id="title">public</span>
-</div>
+<div class="top" id="title">Личные сообщения</div>
 
 <div class="messages" id="msgs"></div>
 
-<div style="display:flex;padding:10px;gap:5px;">
-<input id="msg" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
+<div style="display:flex;padding:10px;">
+<input id="msg" placeholder="Сообщение">
 <button onclick="send()">➤</button>
 </div>
 
@@ -141,51 +76,52 @@ cursor:pointer;
 
 <script>
 const socket = io();
-let room="public";
-let user="Гость";
 
-function join(){
-room = document.getElementById("room").value;
-user = document.getElementById("name").value || "Гость";
+let myName = prompt("Введите имя");
+let selectedSocket = null;
 
-document.getElementById("title").innerText = room;
+socket.emit("join",{user:myName});
 
-socket.emit("join",{room,user});
+socket.on("users", list=>{
+users.innerHTML="";
 
-msgs.innerHTML="";
-}
+list.forEach(u=>{
+let div=document.createElement("div");
+div.className="user";
+div.innerText=u;
+
+div.onclick=()=>{
+selectedSocket = u;
+title.innerText = "Чат с " + u;
+};
+
+users.appendChild(div);
+});
+});
 
 function send(){
-if(!msg.value) return;
+if(!msg.value || !selectedSocket) return;
 
-socket.emit("message",{
-room,
-user,
+socket.emit("private_message",{
+from:myName,
+toSocket:selectedSocket,
 text:msg.value
 });
+
+let div=document.createElement("div");
+div.className="msg";
+div.innerText="Я: " + msg.value;
+msgs.appendChild(div);
 
 msg.value="";
 }
 
-socket.on("message",d=>{
-const div=document.createElement("div");
+socket.on("private_message",data=>{
+let div=document.createElement("div");
 div.className="msg";
-
-if(d.user === user) div.classList.add("me");
-
-div.innerHTML = `<b>${d.user}</b><br>${d.text}`;
-
+div.innerText=data.from + ": " + data.text;
 msgs.appendChild(div);
-msgs.scrollTop=msgs.scrollHeight;
 });
-
-socket.on("users",list=>{
-users.innerHTML = list.map(u=>"🟢 "+u).join("<br>");
-});
-
-function toggleTheme(){
-document.body.classList.toggle("dark");
-}
 </script>
 
 </body>
