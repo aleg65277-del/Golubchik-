@@ -2,53 +2,191 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Golubchik</title>
+<title>Golubchik PRO</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/socket.io/socket.io.js"></script>
+
 <style>
-body {margin:0;font-family:sans-serif;}
-.app{display:flex;height:100vh;}
-.menu{width:240px;background:#17212b;color:white;padding:10px;}
-.chat{flex:1;display:flex;flex-direction:column;}
-.messages{flex:1;overflow:auto;padding:10px;}
-input{width:100%;padding:8px;}
-button{padding:8px;}
+:root{
+  --bg:#eaf3ff;
+  --panel:#ffffff;
+  --text:#111;
+  --accent:#2ea6ff;
+  --msg:#dff1ff;
+}
+
+.dark{
+  --bg:#0b1020;
+  --panel:#111a2e;
+  --text:#fff;
+  --accent:#5865f2;
+  --msg:#1b2a4a;
+}
+
+body{
+margin:0;
+font-family:Arial;
+background:var(--bg);
+color:var(--text);
+}
+
+.app{
+display:flex;
+height:100vh;
+}
+
+/* LEFT */
+.left{
+width:260px;
+background:var(--panel);
+padding:10px;
+display:flex;
+flex-direction:column;
+}
+
+.userlist{
+font-size:14px;
+opacity:0.8;
+}
+
+/* CHAT */
+.chat{
+flex:1;
+display:flex;
+flex-direction:column;
+}
+
+.top{
+padding:10px;
+background:var(--panel);
+font-weight:bold;
+display:flex;
+justify-content:space-between;
+}
+
+.messages{
+flex:1;
+overflow:auto;
+padding:10px;
+display:flex;
+flex-direction:column;
+gap:8px;
+}
+
+.msg{
+max-width:60%;
+padding:8px;
+border-radius:10px;
+background:var(--msg);
+}
+
+.me{
+align-self:flex-end;
+background:var(--accent);
+color:white;
+}
+
+input,button{
+padding:8px;
+margin:4px 0;
+border:none;
+border-radius:6px;
+}
+
+button{
+background:var(--accent);
+color:white;
+cursor:pointer;
+}
 </style>
 </head>
+
 <body>
+
 <div class="app">
-  <div class="menu">
-    <h3>Golubchik</h3>
-    <input id="room" placeholder="Комната" value="public">
-    <button onclick="join()">Войти</button>
-  </div>
-  <div class="chat">
-    <div class="messages" id="msgs"></div>
-    <input id="msg" placeholder="Сообщение" onkeydown="if(event.key==='Enter')send()">
-  </div>
+
+<!-- LEFT -->
+<div class="left">
+<h2>🕊 Golubchik PRO</h2>
+
+<input id="name" placeholder="Ник">
+<input id="room" value="public">
+
+<button onclick="join()">Войти</button>
+<button onclick="toggleTheme()">Тема</button>
+
+<hr>
+
+<h4>🟢 Онлайн</h4>
+<div id="users" class="userlist"></div>
+</div>
+
+<!-- CHAT -->
+<div class="chat">
+
+<div class="top">
+<span id="title">public</span>
+</div>
+
+<div class="messages" id="msgs"></div>
+
+<div style="display:flex;padding:10px;gap:5px;">
+<input id="msg" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
+<button onclick="send()">➤</button>
+</div>
+
+</div>
+
 </div>
 
 <script>
 const socket = io();
-let currentRoom = "public";
+let room="public";
+let user="Гость";
 
 function join(){
-  currentRoom = room.value;
-  socket.emit("join", currentRoom);
-  msgs.innerHTML = "";
+room = document.getElementById("room").value;
+user = document.getElementById("name").value || "Гость";
+
+document.getElementById("title").innerText = room;
+
+socket.emit("join",{room,user});
+
+msgs.innerHTML="";
 }
 
 function send(){
-  if(!msg.value) return;
-  socket.emit("message", {room:currentRoom, text:msg.value});
-  msg.value="";
+if(!msg.value) return;
+
+socket.emit("message",{
+room,
+user,
+text:msg.value
+});
+
+msg.value="";
 }
 
-socket.on("message", d=>{
-  const div=document.createElement("div");
-  div.textContent=d.text;
-  msgs.appendChild(div);
+socket.on("message",d=>{
+const div=document.createElement("div");
+div.className="msg";
+
+if(d.user === user) div.classList.add("me");
+
+div.innerHTML = `<b>${d.user}</b><br>${d.text}`;
+
+msgs.appendChild(div);
+msgs.scrollTop=msgs.scrollHeight;
 });
+
+socket.on("users",list=>{
+users.innerHTML = list.map(u=>"🟢 "+u).join("<br>");
+});
+
+function toggleTheme(){
+document.body.classList.toggle("dark");
+}
 </script>
+
 </body>
 </html>
