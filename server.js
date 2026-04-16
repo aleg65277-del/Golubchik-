@@ -10,29 +10,26 @@ let users = {};
 io.on("connection", socket => {
 
   socket.on("join", data => {
-    socket.room = data.room;
     socket.name = data.user;
 
-    socket.join(data.room);
+    users[socket.id] = data.user;
 
-    if(!users[data.room]) users[data.room] = [];
-    users[data.room].push(data.user);
-
-    io.to(data.room).emit("users", users[data.room]);
+    io.emit("users", Object.values(users));
   });
 
-  socket.on("message", data => {
-    io.to(data.room).emit("message", data);
+  socket.on("private_message", data => {
+    io.to(data.toSocket).emit("private_message", {
+      from: data.from,
+      text: data.text
+    });
   });
 
   socket.on("disconnect", () => {
-    if(socket.room && users[socket.room]){
-      users[socket.room] = users[socket.room].filter(u => u !== socket.name);
-      io.to(socket.room).emit("users", users[socket.room]);
-    }
+    delete users[socket.id];
+    io.emit("users", Object.values(users));
   });
 
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log("Golubchik PRO running"));
+http.listen(PORT, () => console.log("Golubchik DM running"));
