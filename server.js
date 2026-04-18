@@ -5,31 +5,26 @@ const io = require("socket.io")(http);
 
 app.use(express.static("public"));
 
-let users = {};
+let users = [];
 
 io.on("connection", socket => {
 
-  socket.on("join", data => {
-    socket.name = data.user;
-
-    users[socket.id] = data.user;
-
-    io.emit("users", Object.values(users));
+  socket.on("join", name => {
+    socket.name = name;
+    users.push(name);
+    io.emit("users", users);
   });
 
-  socket.on("private_message", data => {
-    io.to(data.toSocket).emit("private_message", {
-      from: data.from,
-      text: data.text
-    });
+  socket.on("message", data => {
+    io.emit("message", data);
   });
 
   socket.on("disconnect", () => {
-    delete users[socket.id];
-    io.emit("users", Object.values(users));
+    users = users.filter(u => u !== socket.name);
+    io.emit("users", users);
   });
 
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log("Golubchik DM running"));
+http.listen(PORT);
