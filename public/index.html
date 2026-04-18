@@ -2,12 +2,12 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Golubchik DM</title>
+<title>Golubchik PRO</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#0b1020;color:white;}
+body{margin:0;font-family:sans-serif;background:#0b1020;color:white;}
 .app{display:flex;height:100vh;}
 
 .left{
@@ -16,29 +16,16 @@ background:#111a2e;
 padding:10px;
 }
 
-.user{
-padding:8px;
-margin:4px 0;
-background:#1b2a4a;
-border-radius:6px;
-cursor:pointer;
-}
-
 .chat{
 flex:1;
 display:flex;
 flex-direction:column;
 }
 
-.top{
-padding:10px;
-background:#111a2e;
-}
-
 .messages{
 flex:1;
-padding:10px;
 overflow:auto;
+padding:10px;
 }
 
 .msg{
@@ -47,6 +34,16 @@ padding:8px;
 border-radius:8px;
 margin:5px 0;
 }
+
+.me{background:#2ea6ff;}
+
+img,video{
+max-width:200px;
+border-radius:8px;
+display:block;
+margin-top:5px;
+}
+
 </style>
 </head>
 
@@ -55,18 +52,24 @@ margin:5px 0;
 <div class="app">
 
 <div class="left">
-<h3>🕊 Users</h3>
+<h2>🕊 Golubchik</h2>
+
+<input id="name" placeholder="Ник">
+<button onclick="login()">Войти</button>
+
+<hr>
+
+<h4>🟢 Онлайн</h4>
 <div id="users"></div>
 </div>
 
 <div class="chat">
 
-<div class="top" id="title">Личные сообщения</div>
-
 <div class="messages" id="msgs"></div>
 
-<div style="display:flex;padding:10px;">
+<div style="display:flex;padding:10px;gap:5px;">
 <input id="msg" placeholder="Сообщение">
+<input type="file" id="file">
 <button onclick="send()">➤</button>
 </div>
 
@@ -76,51 +79,60 @@ margin:5px 0;
 
 <script>
 const socket = io();
+let myName="";
 
-let myName = prompt("Введите имя");
-let selectedSocket = null;
-
-socket.emit("join",{user:myName});
-
-socket.on("users", list=>{
-users.innerHTML="";
-
-list.forEach(u=>{
-let div=document.createElement("div");
-div.className="user";
-div.innerText=u;
-
-div.onclick=()=>{
-selectedSocket = u;
-title.innerText = "Чат с " + u;
-};
-
-users.appendChild(div);
-});
-});
-
-function send(){
-if(!msg.value || !selectedSocket) return;
-
-socket.emit("private_message",{
-from:myName,
-toSocket:selectedSocket,
-text:msg.value
-});
-
-let div=document.createElement("div");
-div.className="msg";
-div.innerText="Я: " + msg.value;
-msgs.appendChild(div);
-
-msg.value="";
+function login(){
+myName = name.value || "Гость";
+socket.emit("join", myName);
 }
 
-socket.on("private_message",data=>{
+function send(){
+if(!msg.value && !file.files[0]) return;
+
+let reader = new FileReader();
+
+if(file.files[0]){
+  reader.onload = function(e){
+    socket.emit("message",{
+      user: myName,
+      text: msg.value,
+      file: e.target.result
+    });
+  };
+  reader.readAsDataURL(file.files[0]);
+}else{
+  socket.emit("message",{
+    user: myName,
+    text: msg.value
+  });
+}
+
+msg.value="";
+file.value="";
+}
+
+socket.on("message",data=>{
 let div=document.createElement("div");
 div.className="msg";
-div.innerText=data.from + ": " + data.text;
+
+if(data.user === myName) div.classList.add("me");
+
+div.innerHTML = "<b>"+data.user+"</b><br>"+(data.text||"");
+
+if(data.file){
+  if(data.file.startsWith("data:video")){
+    div.innerHTML += `<video src="${data.file}" controls></video>`;
+  }else{
+    div.innerHTML += `<img src="${data.file}">`;
+  }
+}
+
 msgs.appendChild(div);
+msgs.scrollTop=msgs.scrollHeight;
+});
+
+socket.on("users",list=>{
+users.innerHTML = list.map(u=>"🟢 "+u).join("<br>");
 });
 </script>
 
